@@ -108,6 +108,9 @@ class Predictor(BasePredictor):
         num_samples: int = Input(
             description="Number of outputs to generate", ge=1, le=4, default=1
         ),
+        seed: int = Input(
+            description="Random seed. Set to 0 to randomize the seed", default=0
+        ),
         scheduler: str = Input(
             description="Which scheduler to use",
             choices=SCHEDULERS.keys(),
@@ -122,6 +125,11 @@ class Predictor(BasePredictor):
 
         image = Image.open(image).convert("RGB")
 
+        if (seed is None) or (seed <= 0):
+            seed = int.from_bytes(os.urandom(2), "big")
+            generator = torch.Generator("cuda").manual_seed(seed)
+            print(f"Using seed: {seed}")
+            
         if MODEL_TYPE == "lineart":
             image = self.annotator(image, detect_resolution=384, image_resolution=1024)
         elif MODEL_TYPE == "canny":
@@ -143,7 +151,8 @@ class Predictor(BasePredictor):
             guidance_scale=guidance_scale, 
             adapter_conditioning_scale=adapter_conditioning_scale,
             adapter_conditioning_factor=adapter_conditioning_factor,
-            num_images_per_prompt=num_samples
+            num_images_per_prompt=num_samples,
+            seed=seed
         )
 
         outputs_paths = []
